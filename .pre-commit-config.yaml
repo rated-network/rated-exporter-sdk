@@ -23,7 +23,7 @@ repos:
       stages: [commit]
     - id: mypy
       name: Run mypy checks
-      entry: mypy --config-file pyproject.toml src --ignore-missing-imports
+      entry: mypy --config-file pyproject.toml rated_exporter_sdk --ignore-missing-imports
       language: system
       pass_filenames: false
       stages: [ commit ]
