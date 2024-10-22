@@ -1,0 +1,35 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.6.0
+  hooks:
+    - id: debug-statements
+    - id: check-merge-conflict
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+    - id: detect-private-key
+
+- repo: https://github.com/commitizen-tools/commitizen
+  rev: v3.25.0
+  hooks:
+  - id: commitizen
+
+- repo: local
+  hooks:
+    - id: ruff
+      name: Run ruff checks
+      entry: ruff check
+      language: system
+      pass_filenames: false
+      stages: [commit]
+    - id: mypy
+      name: Run mypy checks
+      entry: mypy --config-file pyproject.toml src --ignore-missing-imports
+      language: system
+      pass_filenames: false
+      stages: [ commit ]
+    - id: black
+      name: Run black formatting
+      entry: black src
+      language: system
+      pass_filenames: false
+      stages: [ commit ]

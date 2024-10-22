@@ -1,0 +1,47 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+
+jobs:
+  test:
+    name: Test / Lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install -r requirements-all.txt
+
+    - name: Run Black
+      run: |
+        source venv/bin/activate
+        black --check .
+
+    - name: Run MyPy
+      run: |
+        source venv/bin/activate
+        mypy .
+
+    - name: Run Ruff
+      run: |
+        source venv/bin/activate
+        ruff check .
+
+    - name: Run unit tests
+      run: |
+        source venv/bin/activate
+        pytest tests/ -v
