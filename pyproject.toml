@@ -1,5 +1,5 @@
 [tool.ruff]
-src = ["src"]
+src = ["rated_exporter_sdk", "tests"]
 line-length = 100
 
 [tool.ruff.lint]

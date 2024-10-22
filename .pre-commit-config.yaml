@@ -29,7 +29,7 @@ repos:
       stages: [ commit ]
     - id: black
       name: Run black formatting
-      entry: black src
+      entry: black rated_exporter_sdk tests
       language: system
       pass_filenames: false
       stages: [ commit ]

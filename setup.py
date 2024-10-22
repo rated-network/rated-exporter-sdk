@@ -16,7 +16,6 @@ setup(
     version=version,
     python_requires=">=3.6",
     install_requires=read_requirements(),
-    package_dir={"": "src"},
     packages=find_packages(where="rated_exporter_sdk", exclude=["tests", "tests.*"]),
     long_description=Path("README.md").read_text(),
     long_description_content_type="text/markdown",
