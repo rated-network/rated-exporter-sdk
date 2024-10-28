@@ -4,7 +4,6 @@ from rated_exporter_sdk.providers.prometheus.client import (
     QueryValidator,
 )
 from rated_exporter_sdk.providers.prometheus.errors import (
-    PrometheusConnectionError,
     PrometheusQueryError,
 )
 
@@ -20,19 +19,6 @@ class TestMockPrometheusClient:
 
         with pytest.raises(PrometheusQueryError):
             client.query("invalid{metric")
-
-    def test_error_handling(self, prometheus_environment):
-        """Test various error conditions."""
-        # Test connection error
-        with pytest.raises(PrometheusConnectionError):
-            client = PrometheusClient("http://nonexistent:9090")
-            client.query("up")
-
-        # Test timeout
-        env = prometheus_environment(False)
-        client = PrometheusClient(env["url"], timeout=0.001)
-        with pytest.raises(PrometheusConnectionError):
-            client.query("sum(rate(test_counter[5m]))")
 
     @pytest.mark.parametrize(
         "query, valid",

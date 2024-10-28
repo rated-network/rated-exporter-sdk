@@ -217,7 +217,6 @@ def prometheus_environment():
             cleanup_containers(client, [CONTAINER_NAME, PUSHGATEWAY_CONTAINER])
             cleanup_networks(client, NETWORK_NAME)
 
-
             with docker_network(client, NETWORK_NAME):
                 # Create configurations first
                 config.create_config()

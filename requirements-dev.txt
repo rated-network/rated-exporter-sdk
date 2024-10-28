@@ -8,9 +8,9 @@ setuptools==70.0.0
 wheel==0.40.0
 twine==4.0.2
 docker>=6.1.2,<7.0.0
-requests~=2.32.3
 PyYAML~=6.0.2
 setuptools~=70.0.0
-requests>=2.31.0
+requests>=2.31.0,<2.32.0
 pytest-mock>=3.11.1
-urllib3==1.26.18  # For LibreSSL compatibility
+types-requests>=2.25.4
+bcrypt==4.2.0
