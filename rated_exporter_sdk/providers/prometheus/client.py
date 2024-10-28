@@ -31,6 +31,7 @@ from rated_exporter_sdk.providers.prometheus.types import (
     Target,
     TargetHealth,
 )
+from rated_exporter_sdk.providers.prometheus.validation import QueryValidator
 
 logger = structlog.getLogger(__name__)
 
@@ -48,11 +49,6 @@ class PrometheusClient:
     - Connection pooling
     """
 
-    # PromQL query validation patterns
-    METRIC_NAME_PATTERN = re.compile(r"^[a-zA-Z_:][a-zA-Z0-9_:]*$")
-    LABEL_NAME_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
-
-    # API endpoints
     QUERY_ENDPOINT = "/api/v1/query"
     QUERY_RANGE_ENDPOINT = "/api/v1/query_range"
     SERIES_ENDPOINT = "/api/v1/series"
@@ -131,323 +127,8 @@ class PrometheusClient:
         else:
             self.session.cert = None
 
-        # Initialize thread pool for parallel queries
+        self.validator = QueryValidator()
         self.thread_pool = ThreadPoolExecutor(max_workers=max_parallel_queries)
-
-    def validate_query(self, query: str) -> None:
-        """
-        Validate PromQL query syntax with comprehensive operator and function support.
-
-        Args:
-            query: PromQL query string
-
-        Raises:
-            PrometheusQueryError: If query is invalid
-        """
-        if not query or not isinstance(query, str):
-            raise PrometheusQueryError("Query must be a non-empty string", query=query)
-
-        # Complete PromQL operator definitions
-        BINARY_OPERATORS = {
-            "arithmetic": ["+", "-", "*", "/", "%", "^"],
-            "comparison": ["==", "!=", ">", "<", ">=", "<="],
-            "logical": ["and", "or", "unless"],
-            "vector_matching": ["on", "ignoring", "group_left", "group_right"],
-        }
-
-        AGGREGATION_OPERATORS = {
-            # Standard aggregators
-            "sum": {"allow_by": True},
-            "min": {"allow_by": True},
-            "max": {"allow_by": True},
-            "avg": {"allow_by": True},
-            "count": {"allow_by": True},
-            "group": {"allow_by": True},
-            "stddev": {"allow_by": True},
-            "stdvar": {"allow_by": True},
-            "topk": {"numeric_first": True, "allow_by": True},
-            "bottomk": {"numeric_first": True, "allow_by": True},
-            "quantile": {"numeric_first": True, "allow_by": True},
-            "count_values": {"string_first": True, "allow_by": True},
-        }
-
-        RANGE_FUNCTIONS = {
-            # Range vector functions
-            "rate": {"needs_range": True},
-            "irate": {"needs_range": True},
-            "increase": {"needs_range": True},
-            "resets": {"needs_range": True},
-            "changes": {"needs_range": True},
-            "deriv": {"needs_range": True},
-            "predict_linear": {"needs_range": True, "numeric_second": True},
-            "delta": {"needs_range": True},
-            "idelta": {"needs_range": True},
-            # Over_time functions
-            "avg_over_time": {"needs_range": True},
-            "min_over_time": {"needs_range": True},
-            "max_over_time": {"needs_range": True},
-            "sum_over_time": {"needs_range": True},
-            "count_over_time": {"needs_range": True},
-            "quantile_over_time": {"numeric_first": True, "needs_range": True},
-            "stddev_over_time": {"needs_range": True},
-            "stdvar_over_time": {"needs_range": True},
-            "last_over_time": {"needs_range": True},
-            "present_over_time": {"needs_range": True},
-            "absent_over_time": {"needs_range": True},
-        }
-
-        SPECIAL_FUNCTIONS = {
-            # Vector transformation functions
-            "vector": {},
-            "histogram_quantile": {"numeric_first": True},
-            "label_replace": {
-                "string_args": [1, 2, 3, 4]
-            },  # All args except first are strings
-            "label_join": {
-                "string_args": [1, 2]
-            },  # First arg is metric, second is label name
-            "round": {"numeric_second": True},
-            "scalar": {},
-            "clamp_max": {"numeric_second": True},
-            "clamp_min": {"numeric_second": True},
-            "sort": {},
-            "sort_desc": {},
-            "timestamp": {},
-            "absent": {},
-            "floor": {},
-            "ceil": {},
-            "exp": {},
-            "ln": {},
-            "log2": {},
-            "log10": {},
-            "sqrt": {},
-            "abs": {},
-            "day_of_month": {},
-            "day_of_week": {},
-            "days_in_month": {},
-            "hour": {},
-            "minute": {},
-            "month": {},
-            "year": {},
-        }
-
-        # Combine all function types
-        ALL_FUNCTIONS = {
-            **AGGREGATION_OPERATORS,
-            **RANGE_FUNCTIONS,
-            **SPECIAL_FUNCTIONS,
-        }
-
-        def tokenize_query(query: str) -> List[str]:
-            """Convert query into tokens, preserving function calls and strings."""
-            tokens = []
-            current_token = ""
-            in_string = False
-            paren_count = 0
-
-            for char in query:
-                if char == '"':
-                    in_string = not in_string
-                    current_token += char
-                elif in_string:
-                    current_token += char
-                elif char == "(":
-                    paren_count += 1
-                    if paren_count == 1 and current_token:
-                        tokens.append(current_token)
-                        current_token = ""
-                    current_token += char
-                elif char == ")":
-                    paren_count -= 1
-                    current_token += char
-                    if paren_count == 0:
-                        tokens.append(current_token)
-                        current_token = ""
-                elif char.isspace() and paren_count == 0:
-                    if current_token:
-                        tokens.append(current_token)
-                        current_token = ""
-                else:
-                    current_token += char
-
-            if current_token:
-                tokens.append(current_token)
-
-            return tokens
-
-        def validate_function_call(func_name: str, args: List[str]) -> None:
-            """Validate a function call and its arguments."""
-            if func_name not in ALL_FUNCTIONS:
-                raise PrometheusQueryError(
-                    f"Unknown function: {func_name}", query=query
-                )
-
-            func_spec = ALL_FUNCTIONS[func_name]
-
-            # Check for required range vector
-            if func_spec.get("needs_range"):  # type: ignore
-                if not any("[" in arg and "]" in arg for arg in args):
-                    raise PrometheusQueryError(
-                        f"Function {func_name} requires a range vector selector",
-                        query=query,
-                    )
-
-            # Validate numeric first argument
-            if func_spec.get("numeric_first") and args:  # type: ignore
-                if not args[0].replace(".", "").isdigit():
-                    raise PrometheusQueryError(
-                        f"Function {func_name} requires numeric first argument",
-                        query=query,
-                    )
-
-            # Validate string arguments
-            if func_spec.get("string_args"):  # type: ignore
-                for arg_index in func_spec["string_args"]:  # type: ignore
-                    if arg_index < len(args):
-                        arg = args[arg_index]
-                        if not (arg.startswith('"') and arg.endswith('"')):
-                            raise PrometheusQueryError(
-                                f"Function {func_name} requires string argument at position {arg_index + 1}",
-                                query=query,
-                            )
-
-        def parse_function_args(args_str: str) -> List[str]:
-            """Parse function arguments, handling nested functions and quoted strings."""
-            args = []
-            current_arg = ""
-            paren_count = 0
-            in_quotes = False
-
-            for char in args_str:
-                if char == '"':
-                    in_quotes = not in_quotes
-                    current_arg += char
-                elif not in_quotes:
-                    if char == "(":
-                        paren_count += 1
-                        current_arg += char
-                    elif char == ")":
-                        paren_count -= 1
-                        current_arg += char
-                    elif char == "," and paren_count == 0:
-                        args.append(current_arg.strip())
-                        current_arg = ""
-                    else:
-                        current_arg += char
-                else:
-                    current_arg += char
-
-            if current_arg:
-                args.append(current_arg.strip())
-
-            return args
-
-        def extract_metric_names(expr: str) -> List[str]:
-            """Extract metric names from an expression, handling functions and operators."""
-            # Handle function calls
-            if "(" in expr and ")" in expr:
-                func_name = expr[: expr.find("(")].strip()
-                args_str = expr[expr.find("(") + 1 : expr.rfind(")")].strip()
-
-                # Parse and validate function
-                args = parse_function_args(args_str)
-                if func_name in ALL_FUNCTIONS:
-                    validate_function_call(func_name, args)
-                    # Extract metrics from arguments
-                    metrics = []
-                    for arg in args:
-                        if arg.replace(".", "").isdigit() or arg.startswith('"'):
-                            continue
-                        metrics.extend(extract_metric_names(arg))
-                    return metrics
-
-            # Handle binary operators
-            for op_type in BINARY_OPERATORS.values():
-                for op in op_type:
-                    if f" {op} " in expr:
-                        parts = expr.split(f" {op} ")
-                        return sum([extract_metric_names(part) for part in parts], [])
-
-            # Base case: single metric or subexpression
-            metric_end = min(
-                pos
-                for pos in [expr.find("{"), expr.find("["), expr.find(" "), len(expr)]
-                if pos != -1
-            )
-
-            metric_name = expr[:metric_end].strip()
-            return (
-                [metric_name]
-                if metric_name and not metric_name.replace(".", "").isdigit()
-                else []
-            )
-
-        # Extract and validate metric names
-        metric_names = extract_metric_names(query)
-        for metric_name in metric_names:
-            if not self.METRIC_NAME_PATTERN.match(metric_name):
-                raise PrometheusQueryError(
-                    f"Invalid metric name: {metric_name} - must start with a letter or underscore",
-                    query=query,
-                )
-
-        # Validate overall syntax
-        tokens = tokenize_query(query)
-
-        # Check for balanced parentheses and brackets
-        def check_balanced(expr: str, open_char: str, close_char: str) -> bool:
-            count = 0
-            in_string = False
-            for char in expr:
-                if char == '"':
-                    in_string = not in_string
-                elif not in_string:
-                    if char == open_char:
-                        count += 1
-                    elif char == close_char:
-                        count -= 1
-                    if count < 0:
-                        return False
-            return count == 0
-
-        if not all(
-            [
-                check_balanced(query, "(", ")"),
-                check_balanced(query, "{", "}"),
-                check_balanced(query, "[", "]"),
-            ]
-        ):
-            raise PrometheusQueryError(
-                "Unbalanced brackets or parentheses", query=query
-            )
-
-        # Validate subqueries
-        subquery_pattern = re.compile(r"\[.+:\s*\]")
-        for token in tokens:
-            if subquery_pattern.search(token):
-                # Validate subquery duration format
-                duration_parts = token[1:-1].split(":")
-                if len(duration_parts) != 2:
-                    raise PrometheusQueryError(
-                        f"Invalid subquery format in: {token}", query=query
-                    )
-
-                # Validate both range and resolution
-                for duration in duration_parts:
-                    if not re.match(r"^\d+[smhdwy]$", duration.strip()):
-                        raise PrometheusQueryError(
-                            f"Invalid duration format in subquery: {duration}",
-                            query=query,
-                        )
-
-        # Final query structure validation
-        if query.count('"') % 2 != 0:
-            raise PrometheusQueryError("Unmatched quotes", query=query)
-
-        if query.strip().endswith(("or", "and", "unless")):
-            raise PrometheusQueryError(
-                "Query cannot end with a binary operator", query=query
-            )
 
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
         """
@@ -544,7 +225,8 @@ class PrometheusClient:
             PrometheusQueryError: If query is invalid
             PrometheusAPIError: If query execution fails
         """
-        self.validate_query(query)
+
+        self.validator.validate_query(query)
 
         params = {"query": query}
         if options:
@@ -574,7 +256,7 @@ class PrometheusClient:
             PrometheusQueryError: If query is invalid
             PrometheusAPIError: If query execution fails
         """
-        self.validate_query(query)
+        self.validator.validate_query(query)
 
         if not (options.start_time and options.end_time and options.step):
             raise PrometheusValidationError(
@@ -614,7 +296,7 @@ class PrometheusClient:
                 return None
             return result
         except Exception as e:
-            logger.error(f"Query failed: {query} - {e!s}")
+            logger.error(f"Query failed", query=query, error=str(e))
             return None
 
     def query_batch(
@@ -643,7 +325,8 @@ class PrometheusClient:
                     result = future.result()
                     results.append(result)
                 except Exception as e:
-                    logger.error(f"Batch query failed: {e!s}")
+                    logger.error(f"Batch query failed", error=str(e))
+
                     results.append(None)
 
             return results
@@ -666,7 +349,7 @@ class PrometheusClient:
             PrometheusQueryError: If query is invalid
             PrometheusValidationError: If options are invalid
         """
-        self.validate_query(query)
+        self.validator.validate_query(query)
 
         if not (options.start_time and options.end_time and options.step):
             raise PrometheusValidationError(
