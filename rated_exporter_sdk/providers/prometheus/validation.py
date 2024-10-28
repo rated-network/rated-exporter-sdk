@@ -1,19 +1,22 @@
 import re
-from typing import List
+from typing import ClassVar, List
+
 from rated_exporter_sdk.providers.prometheus.errors import PrometheusQueryError
 
 
 class QueryValidator:
-    METRIC_NAME_PATTERN = re.compile(r"^[a-zA-Z_:][a-zA-Z0-9_:]*$")
+    METRIC_NAME_PATTERN: ClassVar[re.Pattern] = re.compile(
+        r"^[a-zA-Z_:][a-zA-Z0-9_:]*$"
+    )
 
-    BINARY_OPERATORS = {
+    BINARY_OPERATORS: ClassVar[dict] = {
         "arithmetic": ["+", "-", "*", "/", "%", "^"],
         "comparison": ["==", "!=", ">", "<", ">=", "<="],
         "logical": ["and", "or", "unless"],
         "vector_matching": ["on", "ignoring", "group_left", "group_right"],
     }
 
-    AGGREGATION_OPERATORS = {
+    AGGREGATION_OPERATORS: ClassVar[dict] = {
         "sum": {"allow_by": True},
         "min": {"allow_by": True},
         "max": {"allow_by": True},
@@ -28,7 +31,7 @@ class QueryValidator:
         "count_values": {"string_first": True, "allow_by": True},
     }
 
-    RANGE_FUNCTIONS = {
+    RANGE_FUNCTIONS: ClassVar[dict] = {
         "rate": {"needs_range": True},
         "irate": {"needs_range": True},
         "increase": {"needs_range": True},
@@ -51,7 +54,7 @@ class QueryValidator:
         "absent_over_time": {"needs_range": True},
     }
 
-    SPECIAL_FUNCTIONS = {
+    SPECIAL_FUNCTIONS: ClassVar[dict] = {
         "vector": {},
         "histogram_quantile": {"numeric_first": True},
         "label_replace": {"string_args": [1, 2, 3, 4]},
@@ -81,7 +84,11 @@ class QueryValidator:
         "year": {},
     }
 
-    ALL_FUNCTIONS = {**AGGREGATION_OPERATORS, **RANGE_FUNCTIONS, **SPECIAL_FUNCTIONS}
+    ALL_FUNCTIONS: ClassVar[dict] = {
+        **AGGREGATION_OPERATORS,
+        **RANGE_FUNCTIONS,
+        **SPECIAL_FUNCTIONS,
+    }
 
     def validate_query(self, query: str) -> None:
         if not query or not isinstance(query, str):
@@ -142,7 +149,7 @@ class QueryValidator:
             raise
 
         except Exception as e:
-            raise PrometheusQueryError(f"Invalid query: {str(e)}", query=query)
+            raise PrometheusQueryError(f"Invalid query: {e!s}", query=query)
 
     def tokenize_query(self, query: str) -> List[str]:
         tokens = []
@@ -178,17 +185,15 @@ class QueryValidator:
                     tokens.append(current_token)
                     current_token = ""
                 i += 1
+            elif not in_string and query.startswith("offset", i):
+                if current_token:
+                    tokens.append(current_token)
+                    current_token = ""
+                tokens.append("offset")
+                i += len("offset")
             else:
-                # Check for 'offset' keyword
-                if not in_string and query.startswith("offset", i):
-                    if current_token:
-                        tokens.append(current_token)
-                        current_token = ""
-                    tokens.append("offset")
-                    i += len("offset")
-                else:
-                    current_token += char
-                    i += 1
+                current_token += char
+                i += 1
         if current_token:
             tokens.append(current_token)
         return tokens
@@ -249,8 +254,8 @@ class QueryValidator:
                 )
 
             label_matchers = labels_part[1:-1].split(",")
-            for matcher in label_matchers:
-                matcher = matcher.strip()
+            for _matcher in label_matchers:
+                matcher = _matcher.strip()
                 if not re.match(
                     r'^[a-zA-Z_][a-zA-Z0-9_]*\s*(=~|!~|!=|=)\s*".+"$', matcher
                 ):

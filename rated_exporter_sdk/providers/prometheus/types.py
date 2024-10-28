@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -91,11 +91,11 @@ class Label:
 class MetricIdentifier:
     """
     Represents a unique metric identifier in Prometheus.
-    Immutable to prevent accidental modifications.
+    Mutable. Use frozen=True for immutability.
     """
 
     name: str
-    labels: Optional[Dict[str, str]] = None
+    labels: dict = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate metric name."""

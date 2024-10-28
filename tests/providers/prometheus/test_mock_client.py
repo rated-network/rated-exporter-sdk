@@ -30,7 +30,7 @@ class TestMockPrometheusClient:
 
         # Test timeout
         env = prometheus_environment(False)
-        client = PrometheusClient(env["url"], timeout=0.001)  # Very short timeout
+        client = PrometheusClient(env["url"], timeout=0.001)
         with pytest.raises(PrometheusConnectionError):
             client.query("sum(rate(test_counter[5m]))")
 

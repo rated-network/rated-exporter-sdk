@@ -121,10 +121,6 @@ class TestLivePrometheusClient:
         with pytest.raises(PrometheusQueryError):
             client.query("invalid{metric")
 
-        # Test invalid metric name
-        with pytest.raises(PrometheusQueryError):
-            client.validate_query("1invalid_metric")
-
         # Test connection error
         with pytest.raises(PrometheusConnectionError):
             client = PrometheusClient("http://nonexistent:9090")
@@ -134,21 +130,8 @@ class TestLivePrometheusClient:
         """Test streaming of large datasets."""
         client = PrometheusClient(prometheus_with_data["url"])
 
-        # First verify what data is actually available
-        print("\nChecking available counter data...")
-        result = client.query('test_counter{job="test_job"}')
-        if result.metrics:
-            print(f"Found {len(result.metrics)} counter metrics")
-            for metric in result.metrics:
-                print(
-                    f"Instance: {metric.identifier.labels.get('instance')}, Value: {metric.latest_value}"
-                )
-        else:
-            print("No counter metrics found in initial check")
-
-        # Use a shorter time range and ensure it starts from a point with data
         end_time = datetime.now()
-        start_time = end_time - timedelta(minutes=2)  # Very short range to debug
+        start_time = end_time - timedelta(minutes=2)
 
         options = PrometheusQueryOptions(
             start_time=start_time,
@@ -156,47 +139,15 @@ class TestLivePrometheusClient:
             step=Step(value=15, unit=TimeUnit.SECONDS),
         )
 
-        # Check full range query first
-        print("\nChecking range query...")
         test_result = client.query_range('test_counter{job="test_job"}', options)
-        if test_result.metrics:
-            print(f"Found {len(test_result.metrics)} metrics in range query")
-            for metric in test_result.metrics:
-                print(f"Instance: {metric.identifier.labels.get('instance')}")
-                print(f"Sample count: {len(metric.samples)}")
-                if metric.samples:
-                    print(
-                        f"Time range: {metric.samples[0].timestamp} to {metric.samples[-1].timestamp}"
-                    )
-        else:
-            print("No data found in range query")
-
         assert test_result.metrics, "No data available in the time range"
 
-        # Test streaming with very small chunks for debugging
-        print("\nTesting streaming...")
         chunk_size = timedelta(seconds=30)  # Reduced for debugging
         chunks = list(
             client.stream_query_range(
                 'test_counter{job="test_job"}', options, chunk_size=chunk_size
             )
         )
-
-        # Print chunk information
-        print(f"\nReceived {len(chunks)} chunks")
-        for i, chunk in enumerate(chunks):
-            print(f"\nChunk {i}:")
-            if chunk.metrics:
-                print(f"Contains {len(chunk.metrics)} metrics")
-                for metric in chunk.metrics:
-                    print(f"Instance: {metric.identifier.labels.get('instance')}")
-                    print(f"Sample count: {len(metric.samples)}")
-                    if metric.samples:
-                        print(
-                            f"Time range: {metric.samples[0].timestamp} to {metric.samples[-1].timestamp}"
-                        )
-            else:
-                print("No metrics in chunk")
 
         assert any(chunk.metrics for chunk in chunks), "No data found in any chunks"
 

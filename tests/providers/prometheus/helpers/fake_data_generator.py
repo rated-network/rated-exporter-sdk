@@ -123,7 +123,7 @@ def generate_test_metrics(
         for i, (le, count) in enumerate(zip(buckets, bucket_values)):
             # Add some variation to counts while maintaining monotonic increase
             if i > 0:
-                count = max(count, cumulative_counts[-1])
+                count = max(count, cumulative_counts[-1])  # noqa
             cumulative_counts.append(count)
 
             # Calculate contribution to sum (use middle of bucket for approximation)
@@ -311,7 +311,8 @@ def write_metrics_to_pushgateway(url: str, metrics: List[Dict]) -> None:
                     metric_type = "# TYPE test_high_cardinality gauge\n"
 
                 if key in grouped_metrics and not any(
-                    l.startswith(f"# TYPE {metric_name}") for l in grouped_metrics[key]
+                    lm.startswith(f"# TYPE {metric_name}")
+                    for lm in grouped_metrics[key]
                 ):
                     grouped_metrics[key].extend([metric_help, metric_type])
 

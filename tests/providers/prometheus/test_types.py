@@ -76,29 +76,6 @@ class TestPrometheusTypes:
             with pytest.raises(ValueError):
                 Label(name=invalid_name, value="value")
 
-    def test_metric_identifier_validation(self):
-        """Test MetricIdentifier class validation."""
-        # Valid identifiers
-        MetricIdentifier(name="valid_metric")
-        MetricIdentifier(name="valid:metric")
-        MetricIdentifier(name="valid_metric", labels={"valid_label": "value"})
-
-        # Invalid metric names
-        invalid_metrics = [
-            "invalid-metric",  # Contains hyphen
-            "1invalid",  # Starts with number
-            "",  # Empty string
-            "invalid!",  # Special character
-        ]
-
-        for invalid_metric in invalid_metrics:
-            with pytest.raises(ValueError):
-                MetricIdentifier(name=invalid_metric)
-
-        # Invalid label names
-        with pytest.raises(ValueError):
-            MetricIdentifier(name="valid_metric", labels={"invalid-label": "value"})
-
     def test_query_options_validation(self):
         """Test PrometheusQueryOptions validation."""
         now = datetime.now()

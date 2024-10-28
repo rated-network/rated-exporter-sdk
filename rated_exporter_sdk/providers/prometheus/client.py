@@ -1,5 +1,3 @@
-import logging
-import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -296,7 +294,7 @@ class PrometheusClient:
                 return None
             return result
         except Exception as e:
-            logger.error(f"Query failed", query=query, error=str(e))
+            logger.error("Query failed", query=query, error=str(e))
             return None
 
     def query_batch(
@@ -325,7 +323,7 @@ class PrometheusClient:
                     result = future.result()
                     results.append(result)
                 except Exception as e:
-                    logger.error(f"Batch query failed", error=str(e))
+                    logger.error("Batch query failed", error=str(e))
 
                     results.append(None)
 
@@ -448,7 +446,7 @@ class PrometheusClient:
                     if metadata.metric_name in metric_names:
                         metric_types[metadata.metric_name] = metadata.type
             except Exception as e:
-                logger.warning(f"Failed to fetch metadata", error=str(e))
+                logger.warning("Failed to fetch metadata", error=str(e))
 
             for result in response["data"]["result"]:
                 metric_name = result["metric"].get("__name__", "")
