@@ -1,8 +1,7 @@
-from typing import List, Dict, Any
-from datetime import datetime
+from typing import Any, Dict, List
+
 from rated_exporter_sdk.providers.prometheus.types import (
     MetricType,
-    MetricValueType,
     PrometheusMetric,
     Sample,
 )

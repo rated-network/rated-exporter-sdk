@@ -1,8 +1,8 @@
-from dataclasses import dataclass
-from typing import Optional, Dict, Union
-from pathlib import Path
 import base64
 import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union
 
 from rated_exporter_sdk.core.exceptions import AuthenticationError, ConfigurationError
 
@@ -86,7 +86,7 @@ class PrometheusAuth:
         if self.ca_cert and not self.ca_cert.is_file():
             raise ConfigurationError(f"CA certificate not found: {self.ca_cert}")
 
-    def get_auth_headers(self) -> Dict[str, str]:
+    def get_auth_headers(self) -> Dict[str, Any]:
         """
         Generate authentication headers based on configuration.
 
@@ -96,32 +96,32 @@ class PrometheusAuth:
         Raises:
             AuthenticationError: If token file cannot be read
         """
-        headers = {}
-
+        headers: Dict[str, Union[bool, Tuple[str, str], str]] = {}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
-        elif self.token_file:
+        elif isinstance(self.token_file, Path):
             try:
-                token = self.token_file.read_text().strip()
+                token: str = self.token_file.read_text().strip()
                 headers["Authorization"] = f"Bearer {token}"
             except (IOError, OSError) as e:
-                raise AuthenticationError(f"Failed to read token file: {str(e)}") from e
+                raise AuthenticationError(f"Failed to read token file: {e!s}") from e
         elif self.username and self.password:
             auth_string = base64.b64encode(
                 f"{self.username}:{self.password}".encode()
             ).decode()
             headers["Authorization"] = f"Basic {auth_string}"
-
         return headers
 
-    def get_ssl_config(self) -> Dict[str, Union[bool, tuple, str]]:
+    def get_ssl_config(self) -> Dict[str, Union[bool, Tuple[str, str], str]]:
         """
         Get SSL configuration for requests.
 
         Returns:
             dict: SSL configuration parameters
         """
-        ssl_config = {"verify": self.ssl_verify}
+        ssl_config: Dict[str, Union[bool, Tuple[str, str], str]] = {
+            "verify": self.ssl_verify
+        }
 
         if self.ca_cert:
             ssl_config["verify"] = str(self.ca_cert)

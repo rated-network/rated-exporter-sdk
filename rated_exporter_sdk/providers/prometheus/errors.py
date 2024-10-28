@@ -1,10 +1,10 @@
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
 from rated_exporter_sdk.core.exceptions import (
     APIError,
-    QueryError,
-    DataSourceError,
     ConfigurationError,
+    DataSourceError,
+    QueryError,
 )
 
 
@@ -94,7 +94,7 @@ class PrometheusConnectionError(DataSourceError):
         if self.url:
             parts.append(f"URL: {self.url}")
         if self.original_error:
-            parts.append(f"Original error: {str(self.original_error)}")
+            parts.append(f"Original error: {self.original_error!s}")
         return " | ".join(parts)
 
 

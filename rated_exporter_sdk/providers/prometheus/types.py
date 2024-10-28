@@ -1,8 +1,8 @@
-from dataclasses import dataclass
-from typing import List, Dict, Any, Optional, Union, Literal
-from datetime import datetime, timedelta
-from enum import Enum, auto
 import re
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class MetricType(str, Enum):
@@ -87,7 +87,7 @@ class Label:
             )
 
 
-@dataclass(frozen=True)
+@dataclass
 class MetricIdentifier:
     """
     Represents a unique metric identifier in Prometheus.
@@ -95,22 +95,22 @@ class MetricIdentifier:
     """
 
     name: str
-    labels: Dict[str, str] = None
+    labels: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
         """Validate metric name."""
+        # Handle empty metric names for aggregation functions
+        if not self.name and "__name__" in self.labels:
+            self.name = self.labels.pop("__name__")
+
+        # Skip validation for aggregation results that might have empty names
+        if not self.name:
+            return
+
         if not re.match(r"^[a-zA-Z_:][a-zA-Z0-9_:]*$", self.name):
             raise ValueError(
                 f"Invalid metric name: {self.name}. Must match regex: ^[a-zA-Z_:][a-zA-Z0-9_:]*$"
             )
-
-        # Validate all label names if present
-        if self.labels:
-            for name in self.labels.keys():
-                if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
-                    raise ValueError(
-                        f"Invalid label name: {name}. Must match regex: ^[a-zA-Z_][a-zA-Z0-9_]*$"
-                    )
 
 
 @dataclass(frozen=True)

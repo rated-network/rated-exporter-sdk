@@ -1,20 +1,21 @@
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 from rated_exporter_sdk.providers.prometheus.types import (
-    MetricType,
-    MetricValueType,
-    TimeUnit,
-    Step,
     Label,
     MetricIdentifier,
-    Sample,
-    PrometheusMetric,
-    PrometheusQueryResult,
-    PrometheusQueryOptions,
-    TimeRange,
-    TargetHealth,
     MetricMetadata,
+    MetricType,
+    MetricValueType,
+    PrometheusMetric,
+    PrometheusQueryOptions,
+    PrometheusQueryResult,
+    Sample,
+    Step,
     Target,
+    TargetHealth,
+    TimeRange,
+    TimeUnit,
 )
 
 

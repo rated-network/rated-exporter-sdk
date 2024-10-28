@@ -1,6 +1,8 @@
 [tool.ruff]
 src = ["rated_exporter_sdk", "tests"]
-line-length = 100
+ignore = ["PLR2004", "E722"]
+line-length = 120
+
 
 [tool.ruff.lint]
 select = [

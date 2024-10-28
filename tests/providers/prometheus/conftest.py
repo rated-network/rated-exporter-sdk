@@ -1,24 +1,22 @@
-import crypt
-import os
-import tempfile
+import base64
 import shutil
+import tempfile
+import time
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Dict
 
 import bcrypt
-import pytest
 import docker
-import base64
-import time
+import pytest
 import requests
 import yaml
-from pathlib import Path
-from typing import Dict, Optional
 from docker import DockerClient
-from docker.errors import ImageNotFound, NotFound, APIError
-from contextlib import contextmanager
+from docker.errors import APIError, NotFound
 
 from providers.prometheus.helpers.fake_data_generator import (
-    write_metrics_to_pushgateway,
     generate_test_metrics,
+    write_metrics_to_pushgateway,
 )
 
 CONTAINER_NAME = "rated-exporter-sdk-prometheus-test"
@@ -198,7 +196,7 @@ class PrometheusTestConfig:
             print(f"Warning: Failed to clean up temp directory: {e}")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def prometheus_environment():
     """
     Enhanced fixture for Prometheus test environment setup.
@@ -286,7 +284,7 @@ def prometheus_environment():
                         )
                     except requests.exceptions.RequestException as e:
                         print(
-                            f"Attempt {attempt + 1}: Service check failed with error: {str(e)}"
+                            f"Attempt {attempt + 1}: Service check failed with error: {e!s}"
                         )
 
                     if prometheus_container.status != "running":
@@ -318,7 +316,7 @@ def prometheus_environment():
     return create_environment
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def prometheus_with_data(prometheus_environment):
     """Provides a Prometheus environment with test data loaded."""
     env = prometheus_environment(with_auth=False)
@@ -350,7 +348,7 @@ def prometheus_with_data(prometheus_environment):
 
         pytest.skip("Failed to verify test data in Prometheus")
     except Exception as e:
-        pytest.skip(f"Failed to set up test data: {str(e)}")
+        pytest.skip(f"Failed to set up test data: {e!s}")
 
 
 @pytest.fixture

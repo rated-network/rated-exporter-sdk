@@ -1,7 +1,8 @@
-import pytest
+import subprocess
 from pathlib import Path
 from typing import Set
-import subprocess
+
+import pytest
 
 
 def get_changed_files() -> Set[str]:
@@ -17,14 +18,17 @@ def get_changed_files() -> Set[str]:
     try:
         # Get uncommitted changes
         result = subprocess.run(
-            ["git", "diff", "--name-only"], capture_output=True, text=True
+            ["git", "diff", "--name-only"], capture_output=True, text=True, check=False
         )
         if result.stdout:
             changed_files.update(result.stdout.splitlines())
 
         # Get staged changes
         result = subprocess.run(
-            ["git", "diff", "--cached", "--name-only"], capture_output=True, text=True
+            ["git", "diff", "--cached", "--name-only"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if result.stdout:
             changed_files.update(result.stdout.splitlines())
@@ -34,6 +38,7 @@ def get_changed_files() -> Set[str]:
             ["git", "diff", "--name-only", "origin/main...HEAD"],
             capture_output=True,
             text=True,
+            check=False,
         )
         if result.stdout:
             changed_files.update(result.stdout.splitlines())
