@@ -43,4 +43,3 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ## Support
 
 If you encounter any issues or have questions, please file an issue on our [GitHub issue tracker](https://github.com/rated-network/rated-exporter-sdk/issues).
-
