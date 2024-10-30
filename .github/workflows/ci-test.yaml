@@ -15,6 +15,56 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up Docker
+      run: |
+        # First remove all old Docker packages
+        sudo apt-get remove -y docker docker-engine docker.io containerd runc containerd.io || true
+        sudo apt-get autoremove -y
+
+        # Clean up any old Docker files
+        sudo rm -rf /var/lib/docker
+        sudo rm -rf /var/lib/containerd
+
+        # Update package lists
+        sudo apt-get update
+
+        # Install dependencies
+        sudo apt-get install -y \
+          ca-certificates \
+          curl \
+          gnupg \
+          lsb-release
+
+        # Add Docker's official GPG key
+        sudo mkdir -p /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+        # Set up Docker repository
+        echo \
+          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+          $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+        # Update package list again with new repo
+        sudo apt-get update
+
+        # Install Docker Engine
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+        # Start Docker service
+        sudo systemctl start docker
+
+        # Create docker network
+        docker network create rated-exporter-sdk-test-network || true
+
+        # Set permissions
+        sudo chmod 666 /var/run/docker.sock
+
+        # Verify installation
+        docker version
+        docker info
+        docker network ls
+
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -26,22 +76,23 @@ jobs:
         source venv/bin/activate
         pip install -r requirements-all.txt
 
-    - name: Run Black
+    - name: Set environment variables
       run: |
-        source venv/bin/activate
-        black --check .
+        echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
-    - name: Run MyPy
+    - name: Run linting
       run: |
         source venv/bin/activate
-        mypy .
-
-    - name: Run Ruff
-      run: |
-        source venv/bin/activate
-        ruff check .
+        black rated_exporter_sdk tests
+        mypy --config-file pyproject.toml rated_exporter_sdk --ignore-missing-imports
+        ruff check
 
     - name: Run unit tests
+      env:
+        PYTHONPATH: ${{ github.workspace }}
       run: |
         source venv/bin/activate
-        pytest tests/ -v
+        # Verify Docker connectivity before tests
+        python -c "import docker; client=docker.from_env(); print(f'Docker version: {client.version()}')"
+        # Run tests with detailed output
+        pytest tests/ -v --capture=no

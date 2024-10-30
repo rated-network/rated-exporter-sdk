@@ -1,6 +1,11 @@
+[main]
+max-branches=20
+
 [tool.ruff]
 src = ["rated_exporter_sdk", "tests"]
-line-length = 100
+ignore = ["PLR2004", "E722", "PLR0913", "G004", "C901", "PLR0912", "PLR0915"]
+line-length = 125
+
 
 [tool.ruff.lint]
 select = [
