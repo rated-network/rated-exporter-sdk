@@ -269,7 +269,7 @@ class PrometheusClient:
         }
 
         if options.timeout:
-            params["timeout"] = f"{options.timeout}s"
+            params["timeout"] = f"{int(options.timeout) * 1_000}ms"
 
         response = self._make_request("GET", self.QUERY_RANGE_ENDPOINT, params=params)
 
