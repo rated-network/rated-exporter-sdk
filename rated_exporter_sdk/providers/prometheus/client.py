@@ -231,7 +231,7 @@ class PrometheusClient:
             if options.time:
                 params["time"] = str(options.time.timestamp())
             if options.timeout:
-                params["timeout"] = f"{options.timeout}s"
+                params["timeout"] = f"{int(options.timeout) * 1_000}ms"
 
         response = self._make_request("GET", self.QUERY_ENDPOINT, params=params)
 
