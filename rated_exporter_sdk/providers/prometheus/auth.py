@@ -96,7 +96,10 @@ class PrometheusAuth:
         Raises:
             AuthenticationError: If token file cannot be read
         """
-        headers: Dict[str, Union[bool, Tuple[str, str], str]] = {}
+        headers: Dict[str, Union[bool, Tuple[str, str], str]] = {
+            "Content-Type": "application/json"
+        }
+
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         elif isinstance(self.token_file, Path):
