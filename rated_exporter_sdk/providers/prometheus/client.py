@@ -2,7 +2,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any, Dict, Generator, List, Optional
-from urllib.parse import urljoin
 
 import requests
 import structlog
@@ -145,7 +144,11 @@ class PrometheusClient:
             PrometheusAPIError: If API returns an error
             PrometheusTimeoutError: If request times out
         """
-        url = urljoin(self.base_url, endpoint)
+
+        if endpoint.startswith("/api/v1"):
+            endpoint = endpoint[7:]
+
+        url = f"{self.base_url.rstrip('/')}/api/v1{endpoint}"
         timeout = kwargs.pop("timeout", self.timeout)
 
         try:
