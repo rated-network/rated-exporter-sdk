@@ -6,6 +6,7 @@ from google.auth import impersonated_credentials
 from google.auth.credentials import Credentials
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
+
 from rated_exporter_sdk.core.exceptions import AuthenticationError
 from rated_exporter_sdk.providers.prometheus.auth import PrometheusAuth
 
@@ -18,13 +19,15 @@ class GCPPrometheusAuth(PrometheusAuth):
         credentials: Optional[Credentials] = None,
         service_account_file: Optional[str] = None,
         target_principal: Optional[str] = None,
+        token_lifetime: int = 3600,
         *args,
         **kwargs
     ):
         self.credentials: Optional[Credentials] = credentials
         self.service_account_file = service_account_file
         self.target_principal = target_principal
-        self.scopes = (["https://www.googleapis.com/auth/monitoring.read"],)
+        self.token_lifetime = token_lifetime
+        self.scopes = ["https://www.googleapis.com/auth/monitoring.read"]
         self._setup_credentials()
 
         if self.credentials is None:
@@ -55,7 +58,7 @@ class GCPPrometheusAuth(PrometheusAuth):
                     source_credentials=base_credentials,
                     target_principal=self.target_principal,
                     target_scopes=self.scopes,
-                    lifetime=3600,  # 1 hour
+                    lifetime=self.token_lifetime,
                 )
             else:
                 self.credentials = base_credentials
@@ -67,6 +70,7 @@ class GCPPrometheusAuth(PrometheusAuth):
 
         if not self.credentials.valid:
             self.credentials.refresh(Request())
+
         elif (
             self.credentials.expiry
             and (self.credentials.expiry - datetime.now()).total_seconds() < 300

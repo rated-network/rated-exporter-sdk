@@ -112,8 +112,6 @@ class PrometheusClient:
         self.session.mount("https://", adapter)
 
         # Configure authentication
-        self.session.headers.update(self.auth.get_auth_headers())
-
         ssl_config = self.auth.get_ssl_config()
         self.session.verify = bool(ssl_config.get("verify", True))
         cert = ssl_config.get("cert")
@@ -144,12 +142,12 @@ class PrometheusClient:
             PrometheusAPIError: If API returns an error
             PrometheusTimeoutError: If request times out
         """
-
         if endpoint.startswith("/api/v1"):
             endpoint = endpoint[7:]
-
         url = f"{self.base_url.rstrip('/')}/api/v1{endpoint}"
+
         timeout = kwargs.pop("timeout", self.timeout)
+        self.session.headers.update(self.auth.get_auth_headers())
 
         try:
             response = self.session.request(
