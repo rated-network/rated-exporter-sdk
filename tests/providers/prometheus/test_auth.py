@@ -2,6 +2,7 @@ from typing import Optional
 
 import pytest
 from pydantic import StrictStr
+
 from rated_exporter_sdk.providers.prometheus.auth import PrometheusAuth
 from rated_exporter_sdk.providers.prometheus.client import PrometheusClient
 from rated_exporter_sdk.providers.prometheus.errors import PrometheusAPIError

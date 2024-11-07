@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import google.auth
@@ -21,7 +21,7 @@ class GCPPrometheusAuth(PrometheusAuth):
         target_principal: Optional[str] = None,
         token_lifetime: int = 3600,
         *args,
-        **kwargs
+        **kwargs,
     ):
         self.credentials: Optional[Credentials] = credentials
         self.service_account_file = service_account_file
@@ -71,10 +71,9 @@ class GCPPrometheusAuth(PrometheusAuth):
         if not self.credentials.valid:
             self.credentials.refresh(Request())
 
-        elif (
-            self.credentials.expiry
-            and (self.credentials.expiry - datetime.now()).total_seconds() < 300
-        ):
+        elif self.credentials.expiry and (
+            self.credentials.expiry - datetime.now()
+        ) < timedelta(minutes=5):
             # Proactively refresh if less than 5 minutes until expiry
             self.credentials.refresh(Request())
 

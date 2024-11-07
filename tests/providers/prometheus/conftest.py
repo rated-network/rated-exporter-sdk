@@ -14,7 +14,7 @@ import yaml
 from docker import DockerClient
 from docker.errors import APIError, NotFound
 
-from providers.prometheus.helpers.fake_data_generator import (
+from tests.providers.prometheus.helpers.fake_data_generator import (
     generate_test_metrics,
     write_metrics_to_pushgateway,
 )
@@ -55,11 +55,11 @@ def cleanup_containers(client: DockerClient, container_names: list) -> None:
             container = client.containers.get(name)
             try:
                 container.stop(timeout=1)
-            except:
+            except Exception:
                 pass
             try:
                 container.remove(force=True)
-            except:
+            except Exception:
                 pass
         except NotFound:
             pass
@@ -82,7 +82,7 @@ def wait_for_container_health(container, timeout: int = 30) -> bool:
                     health == "healthy" or health is None
                 ):  # None means no healthcheck defined
                     return True
-        except:
+        except Exception:
             pass
         time.sleep(1)
     return False
@@ -307,7 +307,7 @@ def prometheus_environment():
                 if container:
                     try:
                         container.remove(force=True)
-                    except:
+                    except Exception:
                         pass
             if config:
                 config.clean_up()

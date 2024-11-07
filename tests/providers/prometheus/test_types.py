@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 import pytest
+
 from rated_exporter_sdk.providers.prometheus.types import (
     Label,
     MetricIdentifier,

@@ -2,6 +2,7 @@ import time
 from datetime import datetime, timedelta
 
 import pytest
+
 from rated_exporter_sdk.providers.prometheus.client import PrometheusClient
 from rated_exporter_sdk.providers.prometheus.errors import (
     PrometheusConnectionError,
