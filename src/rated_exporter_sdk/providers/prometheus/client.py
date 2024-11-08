@@ -155,7 +155,7 @@ class PrometheusClient:
             )
 
             # Handle non-200 responses before attempting JSON parsing
-            if response.status_code != 200:
+            if response.status_code != requests.codes.ok:
                 try:
                     error_detail = response.json()
                 except (ValueError, requests.exceptions.JSONDecodeError):
@@ -365,8 +365,10 @@ class PrometheusClient:
         ) // chunk_size
 
         logger.debug(
-            f"Streaming query over {total_duration} with {chunk_size} chunks. "
-            f"Total chunks: {total_chunks}"
+            "Streaming query over %s with %s chunks. Total chunks: %s",
+            total_duration,
+            chunk_size,
+            total_chunks,
         )
 
         for chunk_index in range(total_chunks):
@@ -387,8 +389,11 @@ class PrometheusClient:
 
             try:
                 logger.debug(
-                    f"Querying chunk {chunk_index + 1}/{total_chunks}: "
-                    f"{chunk_start} to {chunk_end}"
+                    "Querying chunk %s/%s: %s to %s",
+                    chunk_index + 1,
+                    total_chunks,
+                    chunk_start,
+                    chunk_end,
                 )
 
                 result = self.query_range(query, chunk_options)
@@ -397,9 +402,13 @@ class PrometheusClient:
                 yield result
 
             except Exception as e:
-                logger.error(
-                    f"Error querying chunk {chunk_index + 1}/{total_chunks} "
-                    f"({chunk_start} to {chunk_end}): {e!s}"
+                logger.exception(
+                    "Error querying chunk %s/%s (%s to %s): %s",
+                    chunk_index + 1,
+                    total_chunks,
+                    chunk_start,
+                    chunk_end,
+                    e,
                 )
                 # Re-raise certain errors that should stop the streaming
                 if isinstance(e, (PrometheusQueryError, PrometheusValidationError)):
@@ -577,7 +586,7 @@ class PrometheusClient:
             if metadata:
                 return metadata[0].type
         except Exception as e:
-            logger.warning(f"Failed to get metric type for {metric_name}: {e!s}")
+            logger.warning("Failed to get metric type for %s: %s", metric_name, e)
         return MetricValueType.UNTYPED
 
     def get_targets(self, state: Optional[TargetHealth] = None) -> List[Target]:
@@ -615,7 +624,7 @@ class PrometheusClient:
                     )
                 )
             except Exception as e:
-                logger.warning(f"Failed to parse target: {e!s}")
+                logger.warning("Failed to parse target: %s", e)
                 continue
 
         return targets

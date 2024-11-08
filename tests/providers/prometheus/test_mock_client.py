@@ -1,4 +1,5 @@
 import pytest
+
 from rated_exporter_sdk.providers.prometheus.client import (
     PrometheusClient,
     QueryValidator,

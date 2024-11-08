@@ -116,7 +116,7 @@ class QueryValidator:
             for token in tokens:
                 if subquery_pattern.search(token):
                     duration_parts = token[1:-1].split(":")
-                    if len(duration_parts) != 2:
+                    if len(duration_parts) != 2:  # noqa: PLR2004
                         raise PrometheusQueryError(
                             f"Invalid subquery format in: {token}", query=query
                         )
