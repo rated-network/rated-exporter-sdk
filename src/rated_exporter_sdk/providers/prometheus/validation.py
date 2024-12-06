@@ -283,7 +283,8 @@ class QueryValidator:
         # Existing function parsing logic
         if "(" in expr and ")" in expr:
             func_name = expr[: expr.find("(")].strip()
-            args_str = expr[expr.find("(") + 1 : expr.rfind(")")].strip()
+            end_bracket_pos = self.find_closing("(", ")", expr)
+            args_str = expr[expr.find("(") + 1 : end_bracket_pos].strip()
             args = self.parse_function_args(args_str)
             if func_name in self.ALL_FUNCTIONS:
                 self.validate_function_call(func_name, args)
@@ -335,11 +336,13 @@ class QueryValidator:
         current_arg = ""
         paren_count = 0
         in_quotes = False
+        curly_count = 0
 
         for char in args_str:
             if char == '"':
                 in_quotes = not in_quotes
                 current_arg += char
+
             elif not in_quotes:
                 if char == "(":
                     paren_count += 1
@@ -347,7 +350,13 @@ class QueryValidator:
                 elif char == ")":
                     paren_count -= 1
                     current_arg += char
-                elif char == "," and paren_count == 0:
+                elif char == "{":
+                    curly_count += 1
+                    current_arg += char
+                elif char == "}":
+                    curly_count -= 1
+                    current_arg += char
+                elif char == "," and paren_count == 0 and curly_count == 0:
                     args.append(current_arg.strip())
                     current_arg = ""
                 else:
@@ -374,3 +383,19 @@ class QueryValidator:
                 if count < 0:
                     return False
         return count == 0
+
+    @staticmethod
+    def find_closing(opening: str, closing: str, expression: str):
+        deep = 0
+        in_string = False
+        start = expression.find(opening)
+        for idx, char in enumerate(expression[start:]):
+            if char == '"':
+                in_string = not in_string
+            elif not in_string:
+                if char == opening:
+                    deep += 1
+                elif char == closing:
+                    deep -= 1
+            if deep == 0:
+                return start + idx
