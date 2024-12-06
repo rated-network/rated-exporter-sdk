@@ -95,22 +95,13 @@ class QueryValidator:
             raise PrometheusQueryError("Query must be a non-empty string", query=query)
 
         try:
+            self.check_balanced(query)
+
             metric_names = self.extract_metric_names(query)
             for metric_name in metric_names:
                 self.validate_metric_name(metric_name)
 
             tokens = self.tokenize_query(query)
-
-            if not all(
-                [
-                    self.check_balanced(query, "(", ")"),
-                    self.check_balanced(query, "{", "}"),
-                    self.check_balanced(query, "[", "]"),
-                ]
-            ):
-                raise PrometheusQueryError(
-                    "Unbalanced brackets or parentheses", query=query
-                )
 
             subquery_pattern = re.compile(r"\[.+:\s*\]")
             for token in tokens:
@@ -126,9 +117,6 @@ class QueryValidator:
                                 f"Invalid duration format in subquery: {duration}",
                                 query=query,
                             )
-
-            if query.count('"') % 2 != 0:
-                raise PrometheusQueryError("Unmatched quotes", query=query)
 
             # Validate that the query does not end with a binary operator
             if any(query.strip().endswith(op) for op in ["or", "and", "unless"]):
@@ -313,9 +301,9 @@ class QueryValidator:
 
         # Handle simple metric names or vector selectors
         metric_name = expr.strip()
-        self.validate_metric_selector(metric_name)
         if "{" in metric_name:
             metric_name = metric_name.split("{", 1)[0].strip()
+        self.validate_metric_selector(metric_name)
         if metric_name:
             metrics.append(metric_name)
         return metrics
@@ -360,17 +348,32 @@ class QueryValidator:
 
         return args
 
-    def check_balanced(self, expr: str, open_char: str, close_char: str) -> bool:
-        count = 0
-        in_string = False
-        for char in expr:
-            if char == '"':
-                in_string = not in_string
-            elif not in_string:
-                if char == open_char:
-                    count += 1
-                elif char == close_char:
-                    count -= 1
-                if count < 0:
-                    return False
-        return count == 0
+    def check_balanced(self, expr: str):
+        stack = []
+        valid_pairs = {
+            "{": "}",
+            "(": ")",
+            "[": "]",
+            "'": "'",
+            '"': '"',
+        }
+        for i, char in enumerate(expr):
+            # Check for opening characters.
+            if char in valid_pairs.keys():
+                if char in valid_pairs.values() and char == stack[-1]:
+                    # Matching quotes.
+                    stack.pop()
+                else:
+                    stack.append(char)
+            # Check for closing characters.
+            elif char in valid_pairs.values():
+                if not stack or valid_pairs[stack.pop()] != char:
+                    raise PrometheusQueryError(
+                        f"Unbalanced brackets or parentheses: `{char}`",
+                        query=expr,
+                        position=i,
+                    )
+        if stack:
+            raise PrometheusQueryError(
+                f"Unbalanced brackets or parentheses: `{stack[-1]}`", query=expr
+            )
