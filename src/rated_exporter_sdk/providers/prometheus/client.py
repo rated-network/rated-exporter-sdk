@@ -28,7 +28,6 @@ from rated_exporter_sdk.providers.prometheus.types import (
     Target,
     TargetHealth,
 )
-from rated_exporter_sdk.providers.prometheus.validation import QueryValidator
 
 logger = structlog.getLogger(__name__)
 
@@ -122,7 +121,6 @@ class PrometheusClient:
         else:
             self.session.cert = None
 
-        self.validator = QueryValidator()
         self.thread_pool = ThreadPoolExecutor(max_workers=max_parallel_queries)
 
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
@@ -224,9 +222,6 @@ class PrometheusClient:
             PrometheusQueryError: If query is invalid
             PrometheusAPIError: If query execution fails
         """
-
-        self.validator.validate_query(query)
-
         params = {"query": query}
         if options:
             if options.time:
@@ -255,8 +250,6 @@ class PrometheusClient:
             PrometheusQueryError: If query is invalid
             PrometheusAPIError: If query execution fails
         """
-        self.validator.validate_query(query)
-
         if not (options.start_time and options.end_time and options.step):
             raise PrometheusValidationError(
                 "start_time, end_time, and step are required for range queries"
@@ -348,8 +341,6 @@ class PrometheusClient:
             PrometheusQueryError: If query is invalid
             PrometheusValidationError: If options are invalid
         """
-        self.validator.validate_query(query)
-
         if not (options.start_time and options.end_time and options.step):
             raise PrometheusValidationError(
                 "start_time, end_time, and step are required for range queries"

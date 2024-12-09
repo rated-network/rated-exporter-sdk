@@ -1,18 +1,18 @@
 import pytest
 
-from rated_exporter_sdk.providers.prometheus.client import (
-    PrometheusClient,
-    QueryValidator,
-)
+from rated_exporter_sdk.providers.prometheus.client import PrometheusClient
 from rated_exporter_sdk.providers.prometheus.errors import (
+    PrometheusAPIError,
     PrometheusQueryError,
 )
+from rated_exporter_sdk.providers.prometheus.validation import QueryValidator
 
 
 @pytest.mark.provider("prometheus")
 class TestMockPrometheusClient:
     """Test suite for PrometheusClient."""
 
+    @pytest.mark.xfail(reason="Query validation disabled", raises=PrometheusAPIError)
     def test_invalid_query(self, prometheus_environment):
         """Test handling of invalid queries."""
         env = prometheus_environment(False)

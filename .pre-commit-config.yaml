@@ -23,13 +23,13 @@ repos:
       stages: [commit]
     - id: mypy
       name: Run mypy checks
-      entry: mypy --config-file pyproject.toml rated_exporter_sdk --ignore-missing-imports
+      entry: mypy --config-file pyproject.toml src --ignore-missing-imports
       language: system
       pass_filenames: false
       stages: [ commit ]
     - id: black
       name: Run black formatting
-      entry: black rated_exporter_sdk tests
+      entry: black src tests
       language: system
       pass_filenames: false
       stages: [ commit ]
